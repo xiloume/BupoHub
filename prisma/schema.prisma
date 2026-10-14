@@ -1,0 +1,427 @@
+// BupoHub — schéma de base de données (MySQL / MariaDB)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  runtime  = "nodejs"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ------------------------------------------------------------
+// Utilisateurs, rôles & permissions
+// ------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  username        String     @unique
+  displayName     String?
+  passwordHash    String
+  avatarUrl       String?
+  status          UserStatus @default(ACTIVE)
+  roleId          String
+  role            Role       @relation(fields: [roleId], references: [id])
+  locale          String     @default("fr")
+  preferences     Json?
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  sessions            Session[]
+  loginHistory        LoginHistory[]
+  passwordResetTokens PasswordResetToken[]
+  userServices        UserService[]       @relation("UserServices")
+  grantedServices     UserService[]       @relation("GrantedServices")
+  subscriptions       Subscription[]
+  donations           Donation[]
+  discordAccount      DiscordAccount?
+  notifications       Notification[]
+  notificationReads   NotificationRead[]
+  auditLogs           AuditLog[]
+  invitationsCreated  Invitation[]        @relation("InvitationCreator")
+  invitationUsed      Invitation?         @relation("InvitationUser")
+  apiKeysCreated      ApiKey[]
+
+  @@index([status])
+  @@index([roleId])
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  description String?
+  isSystem    Boolean          @default(false)
+  priority    Int              @default(0)
+  users       User[]
+  permissions RolePermission[]
+  invitations Invitation[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ------------------------------------------------------------
+// Sessions & sécurité
+// ------------------------------------------------------------
+
+model Session {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String    @unique
+  userAgent    String?   @db.VarChar(512)
+  ip           String?
+  createdAt    DateTime  @default(now())
+  lastActiveAt DateTime  @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String?
+  ip        String?
+  userAgent String?  @db.VarChar(512)
+  success   Boolean
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("login_history")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  email       String?
+  roleId      String
+  role        Role      @relation(fields: [roleId], references: [id])
+  createdById String
+  createdBy   User      @relation("InvitationCreator", fields: [createdById], references: [id])
+  usedById    String?   @unique
+  usedBy      User?     @relation("InvitationUser", fields: [usedById], references: [id])
+  expiresAt   DateTime
+  usedAt      DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@map("invitations")
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  keyPrefix   String
+  keyHash     String    @unique
+  scopes      Json
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@map("api_keys")
+}
+
+// ------------------------------------------------------------
+// Services
+// ------------------------------------------------------------
+
+enum ServiceStatus {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+  HIDDEN
+}
+
+enum ServiceVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model Service {
+  id                   String            @id @default(cuid())
+  slug                 String            @unique
+  name                 String
+  description          String            @db.Text
+  url                  String
+  icon                 String?
+  imageUrl             String?
+  status               ServiceStatus     @default(ONLINE)
+  visibility           ServiceVisibility @default(PUBLIC)
+  requiresSubscription Boolean           @default(false)
+  ctaLabel             String?
+  sortOrder            Int               @default(0)
+  healthcheckUrl       String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  userServices UserService[]
+
+  @@index([sortOrder])
+  @@map("services")
+}
+
+model UserService {
+  userId      String
+  serviceId   String
+  user        User      @relation("UserServices", fields: [userId], references: [id], onDelete: Cascade)
+  service     Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  grantedById String?
+  grantedBy   User?     @relation("GrantedServices", fields: [grantedById], references: [id], onDelete: SetNull)
+  grantedAt   DateTime  @default(now())
+  expiresAt   DateTime?
+
+  @@id([userId, serviceId])
+  @@map("user_services")
+}
+
+// ------------------------------------------------------------
+// Abonnements & donations
+// ------------------------------------------------------------
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+  PENDING
+}
+
+enum PaymentProvider {
+  PAYPAL
+  MANUAL
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+model SubscriptionPlan {
+  id             String          @id @default(cuid())
+  slug           String          @unique
+  name           String
+  description    String?         @db.Text
+  priceCents     Int
+  currency       String          @default("EUR")
+  interval       BillingInterval @default(MONTH)
+  paypalPlanId   String?
+  features       Json?
+  isActive       Boolean         @default(true)
+  sortOrder      Int             @default(0)
+  subscriptions  Subscription[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  userId                 String
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId                 String
+  plan                   SubscriptionPlan   @relation(fields: [planId], references: [id])
+  status                 SubscriptionStatus @default(PENDING)
+  provider               PaymentProvider    @default(MANUAL)
+  providerSubscriptionId String?            @unique
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  canceledAt             DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+enum DonationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Donation {
+  id              String          @id @default(cuid())
+  userId          String?
+  user            User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  amountCents     Int
+  currency        String          @default("EUR")
+  provider        PaymentProvider @default(PAYPAL)
+  providerOrderId String?         @unique
+  status          DonationStatus  @default(PENDING)
+  message         String?         @db.Text
+  donorName       String?
+  isAnonymous     Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  completedAt     DateTime?
+
+  @@index([status])
+  @@map("donations")
+}
+
+// ------------------------------------------------------------
+// Discord
+// ------------------------------------------------------------
+
+enum DiscordLinkSource {
+  USER
+  ADMIN
+  BOT
+}
+
+model DiscordAccount {
+  id            String            @id @default(cuid())
+  userId        String            @unique
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discordUserId String            @unique
+  username      String
+  globalName    String?
+  avatar        String?
+  linkedAt      DateTime          @default(now())
+  linkedBy      DiscordLinkSource @default(USER)
+  lastSyncAt    DateTime?
+
+  @@map("discord_accounts")
+}
+
+// ------------------------------------------------------------
+// Notifications
+// ------------------------------------------------------------
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  SERVICE
+  SUBSCRIPTION
+  ACCOUNT
+  MAINTENANCE
+  ADMIN
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(INFO)
+  title     String
+  body      String?          @db.Text
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  expiresAt DateTime?
+
+  reads NotificationRead[]
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model NotificationRead {
+  notificationId String
+  userId         String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@id([notificationId, userId])
+  @@map("notification_reads")
+}
+
+// ------------------------------------------------------------
+// Audit & réglages
+// ------------------------------------------------------------
+
+enum ActorType {
+  USER
+  BOT
+  SYSTEM
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  actorId    String?
+  actor      User?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorType  ActorType @default(USER)
+  actorLabel String?
+  action     String
+  targetType String?
+  targetId   String?
+  targetLabel String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
