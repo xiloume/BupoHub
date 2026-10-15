@@ -4,6 +4,7 @@ import { getSettings } from "@/server/settings";
 import { getPaymentProvider } from "@/server/payments";
 import { audit } from "@/server/audit";
 import { notifyUser } from "@/server/notifications";
+import { syncServiceIntegrations } from "@/server/integrations/access";
 import { env } from "@/lib/env";
 import type { SessionUser } from "@/server/auth/session";
 
@@ -90,6 +91,9 @@ export async function syncSubscription(subscriptionId: string) {
       link: "/abonnement",
     });
   }
+  if ((sub.status === "ACTIVE") !== (status === "ACTIVE")) {
+    await syncServiceIntegrations(sub.userId);
+  }
   return updated;
 }
 
@@ -108,6 +112,7 @@ export async function cancelSubscription(user: SessionUser, subscriptionId: stri
   }
   await db.subscription.update({ where: { id: sub.id }, data: { status: "CANCELED", canceledAt: new Date() } });
   await audit({ action: "subscription.cancel", actorId: user.id, actorLabel: user.username, targetType: "subscription", targetId: sub.id });
+  await syncServiceIntegrations(sub.userId);
 }
 
 /** Attribution manuelle par un admin (ex : offert, paiement hors ligne). */
@@ -119,6 +124,7 @@ export async function adminGrantSubscription(actor: SessionUser, userId: string,
   });
   await audit({ action: "subscription.create", actorId: actor.id, actorLabel: actor.username, targetType: "subscription", targetId: sub.id, metadata: { manual: true, months, userId } });
   await notifyUser(userId, { type: "SUBSCRIPTION", title: "Abonnement activé", body: `Un abonnement de ${months} mois vous a été attribué.`, link: "/abonnement" });
+  await syncServiceIntegrations(userId);
   return sub;
 }
 
@@ -143,10 +149,22 @@ export async function listSubscriptions(params: { status?: SubscriptionStatus | 
 export async function runSubscriptionMaintenance() {
   const now = new Date();
   const soon = new Date(now.getTime() + 3 * 86400_000);
-  await db.subscription.updateMany({
+  const expired = await db.subscription.findMany({
     where: { status: "ACTIVE", provider: "MANUAL", currentPeriodEnd: { lt: now } },
-    data: { status: "EXPIRED" },
+    select: { id: true, userId: true },
   });
+  if (expired.length) {
+    await db.subscription.updateMany({ where: { id: { in: expired.map((e) => e.id) } }, data: { status: "EXPIRED" } });
+    for (const e of expired) {
+      await syncServiceIntegrations(e.userId);
+      await notifyUser(e.userId, {
+        type: "SUBSCRIPTION",
+        title: "Abonnement expiré",
+        body: "Votre abonnement a expiré : vos accès premium ont été désactivés.",
+        link: "/abonnement",
+      });
+    }
+  }
   const expiring = await db.subscription.findMany({
     where: { status: "ACTIVE", currentPeriodEnd: { gt: now, lt: soon } },
     select: { userId: true, plan: { select: { name: true } } },
