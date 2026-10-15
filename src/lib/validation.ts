@@ -63,6 +63,7 @@ export const serviceSchema = z.object({
   status: z.enum(["ONLINE", "OFFLINE", "MAINTENANCE", "HIDDEN"]),
   visibility: z.enum(["PUBLIC", "PRIVATE"]),
   requiresSubscription: z.boolean().default(false),
+  integration: z.enum(["NONE", "JELLYFIN"]).default("NONE"),
   ctaLabel: z.string().trim().max(48).optional().or(z.literal("")),
   sortOrder: z.coerce.number().int().min(0).default(0),
   healthcheckUrl: z.string().trim().url().optional().or(z.literal("")),

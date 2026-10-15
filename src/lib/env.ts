@@ -36,6 +36,9 @@ const schema = z.object({
   DISCORD_BOT_TOKEN: optionalString,
   DISCORD_GUILD_ID: optionalString,
 
+  JELLYFIN_URL: optionalString,
+  JELLYFIN_API_KEY: optionalString,
+
   CORS_ORIGINS: z.preprocess(
     (v) =>
       typeof v === "string" && v.trim()
@@ -72,5 +75,8 @@ export const features = {
   },
   get discordBot() {
     return Boolean(env.DISCORD_BOT_TOKEN);
+  },
+  get jellyfin() {
+    return Boolean(env.JELLYFIN_URL && env.JELLYFIN_API_KEY);
   },
 };

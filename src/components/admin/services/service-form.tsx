@@ -25,6 +25,7 @@ export type ServiceFormValues = {
   status: "ONLINE" | "OFFLINE" | "MAINTENANCE" | "HIDDEN";
   visibility: "PUBLIC" | "PRIVATE";
   requiresSubscription: boolean;
+  integration: "NONE" | "JELLYFIN";
   ctaLabel: string | null;
   sortOrder: number;
   healthcheckUrl: string | null;
@@ -40,6 +41,7 @@ const EMPTY: ServiceFormValues = {
   status: "ONLINE",
   visibility: "PUBLIC",
   requiresSubscription: false,
+  integration: "NONE",
   ctaLabel: null,
   sortOrder: 0,
   healthcheckUrl: null,
@@ -142,6 +144,12 @@ export function ServiceForm({ initial }: { initial?: ServiceFormValues }) {
               <Select id="visibility" name="visibility" defaultValue={v.visibility}>
                 <option value="PUBLIC">Public</option>
                 <option value="PRIVATE">Privé</option>
+              </Select>
+            </Field>
+            <Field label="Intégration" htmlFor="integration" hint="Jellyfin : création de compte et connexion automatique depuis BupoHub">
+              <Select id="integration" name="integration" defaultValue={v.integration}>
+                <option value="NONE">Aucune</option>
+                <option value="JELLYFIN">Jellyfin</option>
               </Select>
             </Field>
             <div className="flex items-center justify-between rounded-xl border border-border p-3">

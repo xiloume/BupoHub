@@ -18,6 +18,7 @@ export type ServiceCardData = {
   ctaLabel: string | null;
   requiresSubscription?: boolean;
   hasAccess?: boolean;
+  integration?: string;
 };
 
 export function ServiceCard({
@@ -33,6 +34,8 @@ export function ServiceCard({
   const locked = variant === "dashboard" && service.hasAccess === false;
   const unavailable = service.status === "OFFLINE";
   const cta = service.ctaLabel || (variant === "dashboard" ? `Accéder à ${service.name}` : `Ouvrir ${service.name}`);
+  const integrated = variant === "dashboard" && service.integration && service.integration !== "NONE";
+  const href = integrated ? `/api/services/${service.id}/connect` : service.url;
 
   return (
     <article
@@ -78,7 +81,7 @@ export function ServiceCard({
               asChild
               disabled={unavailable}
             >
-              <a href={service.url} target="_blank" rel="noopener noreferrer" aria-disabled={unavailable}>
+              <a href={href} target="_blank" rel="noopener noreferrer" aria-disabled={unavailable}>
                 {cta} <ArrowUpRight />
               </a>
             </Button>

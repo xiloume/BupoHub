@@ -61,6 +61,7 @@ async function main() {
       url: process.env.SERVICE_URL_BUPOFLIX ?? "https://bupoflix.example.com",
       icon: "Clapperboard",
       ctaLabel: "Ouvrir Bupoflix",
+      integration: "JELLYFIN" as const,
       sortOrder: 0,
     },
     {

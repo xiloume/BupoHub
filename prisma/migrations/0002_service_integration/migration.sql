@@ -1,0 +1,1 @@
+ALTER TABLE `services` ADD COLUMN `integration` ENUM('NONE', 'JELLYFIN') NOT NULL DEFAULT 'NONE';

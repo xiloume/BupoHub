@@ -24,6 +24,7 @@ export type AuditAction =
   | "service.update"
   | "service.delete"
   | "service.reorder"
+  | "service.connect"
   | "subscription.plan_create"
   | "subscription.plan_update"
   | "subscription.plan_delete"
@@ -93,6 +94,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "service.update": "Service modifié",
   "service.delete": "Service supprimé",
   "service.reorder": "Services réordonnés",
+  "service.connect": "Connexion au service",
   "subscription.plan_create": "Plan créé",
   "subscription.plan_update": "Plan modifié",
   "subscription.plan_delete": "Plan supprimé",

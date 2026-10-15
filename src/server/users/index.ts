@@ -4,7 +4,19 @@ import { hashPassword } from "@/server/auth/password";
 import { audit } from "@/server/audit";
 import { notifyUser } from "@/server/notifications";
 import { createPasswordResetLink } from "@/server/auth";
+import { setJellyfinUserDisabled } from "@/server/integrations/jellyfin";
+import { features } from "@/lib/env";
 import type { SessionUser } from "@/server/auth/session";
+
+/** Désactive le compte externe lié (Jellyfin) sans bloquer l'action admin si l'appel échoue. */
+async function disableExternalAccounts(username: string) {
+  if (!features.jellyfin) return;
+  try {
+    await setJellyfinUserDisabled(username, true);
+  } catch {
+    // non bloquant : l'audit de l'action admin prime
+  }
+}
 
 export const userListSelect = {
   id: true,
@@ -162,6 +174,7 @@ export async function adminSetUserStatus(actor: SessionUser, id: string, status:
   const user = await db.user.update({ where: { id }, data: { status } });
   if (status === "SUSPENDED") {
     await db.session.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+    await disableExternalAccounts(user.username);
   }
   await audit({
     action: status === "SUSPENDED" ? "user.suspend" : "user.reactivate",
@@ -238,6 +251,10 @@ export async function adminSetServiceAccess(actor: SessionUser, userId: string, 
     });
   } else {
     await db.userService.deleteMany({ where: { userId, serviceId } });
+    if (service.integration === "JELLYFIN") {
+      const target = await db.user.findUnique({ where: { id: userId }, select: { username: true } });
+      if (target) await disableExternalAccounts(target.username);
+    }
   }
   await audit({
     action: grant ? "user.service_grant" : "user.service_revoke",

@@ -194,6 +194,11 @@ enum ServiceVisibility {
   PRIVATE
 }
 
+enum ServiceIntegration {
+  NONE
+  JELLYFIN
+}
+
 model Service {
   id                   String            @id @default(cuid())
   slug                 String            @unique
@@ -205,6 +210,7 @@ model Service {
   status               ServiceStatus     @default(ONLINE)
   visibility           ServiceVisibility @default(PUBLIC)
   requiresSubscription Boolean           @default(false)
+  integration          ServiceIntegration @default(NONE)
   ctaLabel             String?
   sortOrder            Int               @default(0)
   healthcheckUrl       String?

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Connexion à Bupoflix…</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #0c0a09;
+      color: #e7e5e4;
+      font: 500 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    .box { text-align: center; padding: 2rem; }
+    .spinner {
+      width: 32px; height: 32px; margin: 0 auto 1rem;
+      border: 3px solid #292524; border-top-color: #f59e0b;
+      border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #err { color: #fca5a5; max-width: 32rem; }
+    a { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner"></div>
+    <p>Connexion à Bupoflix…</p>
+    <p id="err"></p>
+    <noscript><p>JavaScript est requis pour la connexion automatique.</p></noscript>
+  </div>
+  <script>
+    (function () {
+      var err = document.getElementById("err");
+      try {
+        var p = new URLSearchParams(location.hash.slice(1));
+        var at = p.get("at"), uid = p.get("u"), sid = p.get("s"), name = p.get("n") || "Bupoflix";
+        if (!at || !uid || !sid) throw new Error("missing params");
+
+        var creds;
+        try { creds = JSON.parse(localStorage.getItem("jellyfin_credentials")) || {}; }
+        catch (e) { creds = {}; }
+        if (!Array.isArray(creds.Servers)) creds.Servers = [];
+
+        var server = null;
+        for (var i = 0; i < creds.Servers.length; i++) {
+          if (creds.Servers[i].Id === sid) { server = creds.Servers[i]; break; }
+        }
+        if (!server) { server = {}; creds.Servers.push(server); }
+
+        server.Id = sid;
+        server.Name = name;
+        server.ManualAddress = location.origin;
+        server.manualAddressOnly = true;
+        server.LocalAddress = location.origin;
+        server.DateLastAccessed = Date.now();
+        server.LastConnectionMode = 2; // manuel
+        server.AccessToken = at;
+        server.UserId = uid;
+
+        localStorage.setItem("jellyfin_credentials", JSON.stringify(creds));
+        location.replace("/web/index.html");
+      } catch (e) {
+        err.textContent = "Lien de connexion invalide ou expiré. Retournez sur BupoHub et cliquez de nouveau sur le service.";
+      }
+    })();
+  </script>
+</body>
+</html>
