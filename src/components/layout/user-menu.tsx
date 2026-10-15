@@ -54,13 +54,14 @@ export function UserMenu({ user, showSubscription }: { user: NavUser; showSubscr
           </>
         ) : null}
         <DropdownSeparator />
-        <form action={logoutAction}>
-          <DropdownItem asChild>
-            <button type="submit" className="w-full text-red-300 data-[highlighted]:text-red-200">
-              <LogOut /> Déconnexion
-            </button>
-          </DropdownItem>
-        </form>
+        <DropdownItem
+          className="text-red-300 data-[highlighted]:text-red-200"
+          onSelect={() => {
+            void logoutAction();
+          }}
+        >
+          <LogOut /> Déconnexion
+        </DropdownItem>
       </DropdownContent>
     </Dropdown>
   );
