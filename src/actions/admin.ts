@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
+import { encryptSecret } from "@/server/crypto";
 import { requirePermission, AuthError } from "@/server/auth/guards";
 import {
   adminCreateUser,
@@ -252,12 +253,26 @@ export async function saveServiceAction(id: string | null, _p: ActionState, fd: 
     const actor = await requirePermission("services.manage");
     const parsed = parseService(fd);
     if (!parsed.success) return { error: "Formulaire invalide.", fieldErrors: flattenErrors(parsed.error) };
+    const { ssoSecret, ...rest } = parsed.data;
+    const sso = rest.integration === "BUPO_SSO";
+    if (sso && (!rest.ssoClientId || !rest.ssoRedirectUri)) {
+      const fe: Record<string, string> = {};
+      if (!rest.ssoClientId) fe.ssoClientId = "Requis";
+      if (!rest.ssoRedirectUri) fe.ssoRedirectUri = "Requis";
+      return { error: "Intégration SSO incomplète.", fieldErrors: fe };
+    }
+    if (sso && !id && !ssoSecret) {
+      return { error: "Intégration SSO incomplète.", fieldErrors: { ssoSecret: "Requis" } };
+    }
     const data = {
-      ...parsed.data,
+      ...rest,
       icon: parsed.data.icon || null,
       imageUrl: parsed.data.imageUrl || null,
       ctaLabel: parsed.data.ctaLabel || null,
       healthcheckUrl: parsed.data.healthcheckUrl || null,
+      ssoClientId: sso ? rest.ssoClientId || null : null,
+      ssoRedirectUri: sso ? rest.ssoRedirectUri || null : null,
+      ssoSecretEnc: !sso ? null : ssoSecret ? encryptSecret(ssoSecret) : undefined,
     };
     const slugTaken = await db.service.findFirst({ where: { slug: data.slug, ...(id ? { NOT: { id } } : {}) } });
     if (slugTaken) return { error: "Ce slug est déjà utilisé.", fieldErrors: { slug: "Déjà utilisé" } };

@@ -63,10 +63,13 @@ export const serviceSchema = z.object({
   status: z.enum(["ONLINE", "OFFLINE", "MAINTENANCE", "HIDDEN"]),
   visibility: z.enum(["PUBLIC", "PRIVATE"]),
   requiresSubscription: z.boolean().default(false),
-  integration: z.enum(["NONE", "JELLYFIN"]).default("NONE"),
+  integration: z.enum(["NONE", "JELLYFIN", "BUPO_SSO"]).default("NONE"),
   ctaLabel: z.string().trim().max(48).optional().or(z.literal("")),
   sortOrder: z.coerce.number().int().min(0).default(0),
   healthcheckUrl: z.string().trim().url().optional().or(z.literal("")),
+  ssoClientId: z.string().trim().max(64).optional().or(z.literal("")),
+  ssoSecret: z.string().trim().max(128).optional().or(z.literal("")),
+  ssoRedirectUri: z.string().trim().url("URL invalide").optional().or(z.literal("")),
 });
 
 export const adminCreateUserSchema = z.object({

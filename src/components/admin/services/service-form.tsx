@@ -25,10 +25,13 @@ export type ServiceFormValues = {
   status: "ONLINE" | "OFFLINE" | "MAINTENANCE" | "HIDDEN";
   visibility: "PUBLIC" | "PRIVATE";
   requiresSubscription: boolean;
-  integration: "NONE" | "JELLYFIN";
+  integration: "NONE" | "JELLYFIN" | "BUPO_SSO";
   ctaLabel: string | null;
   sortOrder: number;
   healthcheckUrl: string | null;
+  ssoClientId?: string | null;
+  ssoRedirectUri?: string | null;
+  ssoSecretEnc?: string | null;
 };
 
 const EMPTY: ServiceFormValues = {
@@ -52,6 +55,7 @@ export function ServiceForm({ initial }: { initial?: ServiceFormValues }) {
   const [state, action] = useActionState(saveServiceAction.bind(null, v.id ?? null), initialActionState);
   const [icon, setIcon] = React.useState(v.icon ?? "Box");
   const [requiresSub, setRequiresSub] = React.useState(v.requiresSubscription);
+  const [integration, setIntegration] = React.useState(v.integration);
   const [name, setName] = React.useState(v.name);
   const [slug, setSlug] = React.useState(v.slug);
   const slugTouched = React.useRef(Boolean(v.id));
@@ -146,10 +150,11 @@ export function ServiceForm({ initial }: { initial?: ServiceFormValues }) {
                 <option value="PRIVATE">Privé</option>
               </Select>
             </Field>
-            <Field label="Intégration" htmlFor="integration" hint="Jellyfin : création de compte et connexion automatique depuis BupoHub">
-              <Select id="integration" name="integration" defaultValue={v.integration}>
+            <Field label="Intégration" htmlFor="integration" hint="Jellyfin : compte et connexion auto. BupoHub SSO : les utilisateurs se connectent à l'app via leur compte BupoHub">
+              <Select id="integration" name="integration" value={integration} onChange={(e) => setIntegration(e.target.value as typeof integration)}>
                 <option value="NONE">Aucune</option>
                 <option value="JELLYFIN">Jellyfin</option>
+                <option value="BUPO_SSO">BupoHub SSO</option>
               </Select>
             </Field>
             <div className="flex items-center justify-between rounded-xl border border-border p-3">
@@ -165,6 +170,35 @@ export function ServiceForm({ initial }: { initial?: ServiceFormValues }) {
             </Field>
           </CardContent>
         </Card>
+        {integration === "BUPO_SSO" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Client SSO</CardTitle>
+              <CardDescription>Identifiants à copier dans la configuration de l&apos;application (« Se connecter avec BupoHub »).</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <Field label="Client ID" htmlFor="ssoClientId" error={fe.ssoClientId}>
+                <div className="flex gap-2">
+                  <Input id="ssoClientId" name="ssoClientId" defaultValue={v.ssoClientId ?? ""} className="flex-1 font-mono" />
+                  <Button type="button" variant="ghost" size="sm" onClick={(e) => { const el = (e.currentTarget.previousSibling as HTMLInputElement); el.value = `bupo-${crypto.randomUUID().slice(0, 8)}`; }}>
+                    Générer
+                  </Button>
+                </div>
+              </Field>
+              <Field label="Client Secret" htmlFor="ssoSecret" error={fe.ssoSecret} hint={v.ssoSecretEnc ? "Défini — laisser vide pour conserver." : "Requis pour l'intégration SSO."}>
+                <div className="flex gap-2">
+                  <Input id="ssoSecret" name="ssoSecret" placeholder={v.ssoSecretEnc ? "••••••••" : ""} className="flex-1 font-mono" autoComplete="new-password" />
+                  <Button type="button" variant="ghost" size="sm" onClick={(e) => { const el = (e.currentTarget.previousSibling as HTMLInputElement); el.value = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, ""); }}>
+                    Générer
+                  </Button>
+                </div>
+              </Field>
+              <Field label="URL de redirection (callback)" htmlFor="ssoRedirectUri" error={fe.ssoRedirectUri} hint="Ex. https://bupobook.bupohub.fr/api/auth/hub/callback">
+                <Input id="ssoRedirectUri" name="ssoRedirectUri" type="url" defaultValue={v.ssoRedirectUri ?? ""} />
+              </Field>
+            </CardContent>
+          </Card>
+        ) : null}
         <div className="flex flex-col gap-2">
           <SubmitButton size="lg">{v.id ? "Enregistrer" : "Créer le service"}</SubmitButton>
           {v.id ? (
