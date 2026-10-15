@@ -27,7 +27,7 @@ export function ServiceCredentials({
   const provision = () =>
     start(async () => {
       const r = await provisionServiceCredentialAction(serviceId);
-      if (r.error) return toast.error(r.error);
+      if (r.error) { toast.error(r.error); return; }
       setCreds(r.data!);
       toast.success("Identifiants créés");
     });
@@ -35,7 +35,7 @@ export function ServiceCredentials({
   const regenerate = () =>
     start(async () => {
       const r = await regenerateServiceCredentialAction(serviceId);
-      if (r.error) return toast.error(r.error);
+      if (r.error) { toast.error(r.error); return; }
       setCreds(r.data!);
       setRevealed(true);
       toast.success(r.message ?? "Mot de passe régénéré");
