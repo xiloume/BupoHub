@@ -136,7 +136,7 @@ export async function jellyfinConnectUrl(user: { id: string; username: string },
     session = await authenticate(account.username, account.password, deviceId);
   }
 
-  const target = new URL("/bridge.html", service.url);
+  const target = new URL("/web/bridge.html", service.url);
   target.hash = new URLSearchParams({
     at: session.AccessToken,
     u: session.User.Id,
