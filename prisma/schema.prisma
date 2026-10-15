@@ -45,6 +45,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   userServices        UserService[]       @relation("UserServices")
   grantedServices     UserService[]       @relation("GrantedServices")
+  serviceAccounts     ServiceAccount[]
   subscriptions       Subscription[]
   donations           Donation[]
   discordAccount      DiscordAccount?
@@ -217,7 +218,8 @@ model Service {
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
-  userServices UserService[]
+  userServices    UserService[]
+  serviceAccounts ServiceAccount[]
 
   @@index([sortOrder])
   @@map("services")
@@ -235,6 +237,23 @@ model UserService {
 
   @@id([userId, serviceId])
   @@map("user_services")
+}
+
+/** Identifiants d'un utilisateur sur un service externe intégré (ex. Jellyfin). */
+model ServiceAccount {
+  userId     String
+  serviceId  String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service    Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  username   String
+  // Secret chiffré (AES-256-GCM, clé dérivée de SESSION_SECRET)
+  secret     String
+  externalId String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@id([userId, serviceId])
+  @@map("service_accounts")
 }
 
 // ------------------------------------------------------------

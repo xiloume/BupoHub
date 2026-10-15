@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { LayoutGrid } from "lucide-react";
 import { requireUserPage } from "@/server/auth/guards";
 import { listServicesForUser } from "@/server/services";
+import { getStoredAccount } from "@/server/integrations/jellyfin";
 import { ServiceCard } from "@/components/services/service-card";
+import { ServiceCredentials } from "@/components/services/service-credentials";
 import { EmptyState, PageHeader } from "@/components/ui/misc";
 
 export const metadata: Metadata = { title: "Services" };
@@ -12,6 +14,10 @@ export default async function ServicesPage() {
   const services = await listServicesForUser(user.id);
   const accessible = services.filter((s) => s.hasAccess);
   const locked = services.filter((s) => !s.hasAccess);
+  const integrated = accessible.filter((s) => s.integration !== "NONE");
+  const accounts = new Map(
+    await Promise.all(integrated.map(async (s) => [s.id, await getStoredAccount(user.id, s.id)] as const)),
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -25,6 +31,13 @@ export default async function ServicesPage() {
               <ServiceCard key={s.id} service={s} variant="dashboard" />
             ))}
           </section>
+          {integrated.length ? (
+            <section className="flex flex-col gap-3">
+              {integrated.map((s) => (
+                <ServiceCredentials key={s.id} serviceId={s.id} serviceName={s.name} initial={accounts.get(s.id) ?? null} />
+              ))}
+            </section>
+          ) : null}
           {locked.length ? (
             <section className="flex flex-col gap-4">
               <div>

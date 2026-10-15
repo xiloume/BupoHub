@@ -95,6 +95,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "service.delete": "Service supprimé",
   "service.reorder": "Services réordonnés",
   "service.connect": "Connexion au service",
+  "service.credential_create": "Identifiants de service créés",
+  "service.credential_rotate": "Mot de passe de service régénéré",
   "subscription.plan_create": "Plan créé",
   "subscription.plan_update": "Plan modifié",
   "subscription.plan_delete": "Plan supprimé",
