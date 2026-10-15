@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requirePermissionPage } from "@/server/auth/guards";
 import { listAllPlans, listSubscriptions } from "@/server/subscriptions";
+import { db } from "@/server/db";
 import { getSettings } from "@/server/settings";
 import { features } from "@/lib/env";
 import { PageHeader, Alert, Pagination, Stat } from "@/components/ui/misc";
@@ -19,7 +20,12 @@ export default async function AdminSubscriptionsPage({ searchParams }: PageProps
   const sp = await searchParams;
   const status = (typeof sp.status === "string" ? sp.status : "ALL") as "ALL" | keyof typeof SUBSCRIPTION_STATUS_META;
   const page = Number(sp.page ?? 1) || 1;
-  const [plans, subs, settings] = await Promise.all([listAllPlans(), listSubscriptions({ status, page }), getSettings()]);
+  const [plans, subs, settings, services] = await Promise.all([
+    listAllPlans(),
+    listSubscriptions({ status, page }),
+    getSettings(),
+    db.service.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true, visibility: true, requiresSubscription: true } }),
+  ]);
   const enabled = settings["subscriptions.enabled"];
   const active = plans.reduce((s, p) => s + p._count.subscriptions, 0);
   const mrr = plans.reduce((s, p) => s + p._count.subscriptions * (p.interval === "YEAR" ? Math.round(p.priceCents / 12) : p.priceCents), 0);
@@ -41,7 +47,10 @@ export default async function AdminSubscriptionsPage({ searchParams }: PageProps
         <Stat label="Plans" value={plans.length} hint={`${plans.filter((p) => p.isActive).length} actif${plans.filter((p) => p.isActive).length > 1 ? "s" : ""}`} />
       </div>
 
-      <PlansManager plans={plans.map((p) => ({ id: p.id, slug: p.slug, name: p.name, description: p.description, priceCents: p.priceCents, currency: p.currency, interval: p.interval, paypalPlanId: p.paypalPlanId, isActive: p.isActive, visibility: p.visibility, sortOrder: p.sortOrder, count: p._count.subscriptions }))} />
+      <PlansManager
+        services={services}
+        plans={plans.map((p) => ({ id: p.id, slug: p.slug, name: p.name, description: p.description, priceCents: p.priceCents, currency: p.currency, interval: p.interval, paypalPlanId: p.paypalPlanId, isActive: p.isActive, visibility: p.visibility, features: Array.isArray(p.features) ? (p.features as string[]) : [], serviceIds: p.planServices.map((ps) => ps.serviceId), sortOrder: p.sortOrder, count: p._count.subscriptions }))}
+      />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-4">

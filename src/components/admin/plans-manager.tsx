@@ -15,9 +15,10 @@ import { deletePlanAction, savePlanAction } from "@/actions/admin";
 import { formatMoney } from "@/lib/meta";
 import { initialActionState } from "@/lib/utils";
 
-type Plan = { id: string; slug: string; name: string; description: string | null; priceCents: number; currency: string; interval: "MONTH" | "YEAR"; paypalPlanId: string | null; isActive: boolean; visibility: "PUBLIC" | "PRIVATE"; sortOrder: number; count: number };
+type Plan = { id: string; slug: string; name: string; description: string | null; priceCents: number; currency: string; interval: "MONTH" | "YEAR"; paypalPlanId: string | null; isActive: boolean; visibility: "PUBLIC" | "PRIVATE"; features: string[]; serviceIds: string[]; sortOrder: number; count: number };
+type ServiceOption = { id: string; name: string; visibility: "PUBLIC" | "PRIVATE"; requiresSubscription: boolean };
 
-export function PlansManager({ plans }: { plans: Plan[] }) {
+export function PlansManager({ plans, services }: { plans: Plan[]; services: ServiceOption[] }) {
   const [editing, setEditing] = React.useState<Plan | null | "new">(null);
   return (
     <Card>
@@ -51,12 +52,12 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
           </div>
         ))}
       </CardContent>
-      {editing ? <PlanDialog plan={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
+      {editing ? <PlanDialog plan={editing === "new" ? null : editing} services={services} onClose={() => setEditing(null)} /> : null}
     </Card>
   );
 }
 
-function PlanDialog({ plan, onClose }: { plan: Plan | null; onClose: () => void }) {
+function PlanDialog({ plan, services, onClose }: { plan: Plan | null; services: ServiceOption[]; onClose: () => void }) {
   const [state, action] = useActionState(savePlanAction.bind(null, plan?.id ?? null), initialActionState);
   const [active, setActive] = React.useState(plan?.isActive ?? true);
   useActionToast(state, onClose);
@@ -81,6 +82,21 @@ function PlanDialog({ plan, onClose }: { plan: Plan | null; onClose: () => void 
               </Select>
             </Field>
           </div>
+          <Field label="Avantages affichés (un par ligne)" htmlFor="p-feat" error={fe.features} hint="Liste à puces visible sur la page abonnement">
+            <Textarea id="p-feat" name="features" rows={4} defaultValue={plan?.features.join("\n") ?? ""} placeholder={"Accès à tous les services\nSupport prioritaire"} />
+          </Field>
+          <Field label="Services inclus" error={fe.serviceIds} hint="Les abonnés à ce plan débloquent ces services. Aucune sélection : tout abonnement suffit pour les services « réservés aux abonnés ».">
+            <div className="flex max-h-44 flex-col gap-1 overflow-y-auto rounded-xl border border-border p-3">
+              {services.length === 0 ? <p className="text-xs text-fg-subtle">Aucun service.</p> : null}
+              {services.map((s) => (
+                <label key={s.id} className="flex items-center gap-2.5 text-sm">
+                  <input type="checkbox" name="serviceIds" value={s.id} defaultChecked={plan?.serviceIds.includes(s.id)} className="size-4 accent-amber-500" />
+                  <span className="flex-1">{s.name}</span>
+                  <span className="text-xs text-fg-subtle">{s.visibility === "PRIVATE" ? "privé" : "public"}{s.requiresSubscription ? " · abo" : ""}</span>
+                </label>
+              ))}
+            </div>
+          </Field>
           <Field label="ID du plan PayPal" htmlFor="p-paypal" error={fe.paypalPlanId} hint="Créé dans le tableau de bord PayPal (P-XXXX…)"><Input id="p-paypal" name="paypalPlanId" defaultValue={plan?.paypalPlanId ?? ""} /></Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Visibilité" htmlFor="p-vis" hint="Privé : souscription uniquement pour les utilisateurs autorisés">

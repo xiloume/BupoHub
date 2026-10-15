@@ -60,8 +60,10 @@ export default async function SubscriptionPage({ searchParams }: PageProps<"/abo
               <Card key={p.id} className="relative flex flex-col overflow-hidden">
                 <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-accent-soft blur-3xl" />
                 <CardHeader>
-                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent"><Sparkles className="size-3" /> {p.name}</span>
-                  {p.visibility === "PRIVATE" ? <Badge variant="violet" className="ml-2">Offre privée</Badge> : null}
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent"><Sparkles className="size-3" /> {p.name}</span>
+                    {p.visibility === "PRIVATE" ? <Badge variant="violet">Offre privée</Badge> : null}
+                  </span>
                   <p className="mt-3 text-4xl font-semibold tracking-tight">
                     {formatMoney(p.priceCents, p.currency)} <span className="text-base font-normal text-fg-muted">/ {p.interval === "MONTH" ? "mois" : "an"}</span>
                   </p>

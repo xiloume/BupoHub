@@ -100,6 +100,8 @@ export const planSchema = z.object({
   paypalPlanId: z.string().trim().max(64).optional().or(z.literal("")),
   isActive: z.boolean().default(true),
   visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC"),
+  features: z.array(z.string().trim().min(1).max(120)).max(20).default([]),
+  serviceIds: z.array(z.string().min(1)).max(50).default([]),
   sortOrder: z.coerce.number().int().min(0).default(0),
 });
 

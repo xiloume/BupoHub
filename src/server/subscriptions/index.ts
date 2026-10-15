@@ -28,7 +28,7 @@ export async function listAvailablePlans(userId: string) {
 export async function listAllPlans() {
   return db.subscriptionPlan.findMany({
     orderBy: { sortOrder: "asc" },
-    include: { _count: { select: { subscriptions: { where: { status: "ACTIVE" } } } } },
+    include: { _count: { select: { subscriptions: { where: { status: "ACTIVE" } } } }, planServices: { select: { serviceId: true } } },
   });
 }
 

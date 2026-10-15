@@ -315,10 +315,20 @@ export async function reorderServicesAction(ids: string[]): Promise<ActionState>
 export async function savePlanAction(id: string | null, _p: ActionState, fd: FormData): Promise<ActionState> {
   try {
     const actor = await requirePermission("subscriptions.manage");
-    const parsed = planSchema.safeParse({ ...Object.fromEntries(fd), isActive: bool(fd.get("isActive")) });
+    const parsed = planSchema.safeParse({
+      ...Object.fromEntries(fd),
+      isActive: bool(fd.get("isActive")),
+      serviceIds: fd.getAll("serviceIds"),
+      features: String(fd.get("features") ?? "").split("\n").map((s) => s.trim()).filter(Boolean),
+    });
     if (!parsed.success) return { error: "Formulaire invalide.", fieldErrors: flattenErrors(parsed.error) };
-    const data = { ...parsed.data, description: parsed.data.description || null, paypalPlanId: parsed.data.paypalPlanId || null, currency: parsed.data.currency.toUpperCase() };
+    const { serviceIds, ...planData } = parsed.data;
+    const data = { ...planData, description: planData.description || null, paypalPlanId: planData.paypalPlanId || null, currency: planData.currency.toUpperCase() };
     const plan = id ? await db.subscriptionPlan.update({ where: { id }, data }) : await db.subscriptionPlan.create({ data });
+    await db.planService.deleteMany({ where: { planId: plan.id } });
+    if (serviceIds.length) {
+      await db.planService.createMany({ data: serviceIds.map((serviceId) => ({ planId: plan.id, serviceId })) });
+    }
     await audit({ action: id ? "subscription.plan_update" : "subscription.plan_create", actorId: actor.id, actorLabel: actor.username, targetType: "plan", targetId: plan.id, targetLabel: plan.name });
     revalidatePath("/admin/abonnements");
     revalidatePath("/abonnement");
