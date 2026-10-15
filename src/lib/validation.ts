@@ -129,6 +129,7 @@ export const BOT_SCOPES = {
   "subscriptions:read": "Vérifier l'état d'abonnement",
   "services:read": "Lister les services",
   "notifications:write": "Envoyer des notifications",
+  "admin:maintenance": "Déclencher les tâches de maintenance",
 } as const;
 export type BotScope = keyof typeof BOT_SCOPES;
 
