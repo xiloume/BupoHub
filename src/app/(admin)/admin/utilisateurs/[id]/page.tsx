@@ -21,7 +21,7 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/utilis
     getUserDetail(id),
     db.role.findMany({ orderBy: { priority: "desc" } }),
     db.service.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true, visibility: true, requiresSubscription: true, icon: true } }),
-    db.subscriptionPlan.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
+    db.subscriptionPlan.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true, isActive: true, visibility: true } }),
     getSettings(),
   ]);
   if (!user) notFound();
@@ -64,6 +64,7 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/utilis
           discord: user.discordAccount ? { username: user.discordAccount.username, discordUserId: user.discordAccount.discordUserId, linkedAt: user.discordAccount.linkedAt } : null,
           subscriptions: user.subscriptions.map((s) => ({ id: s.id, status: s.status, planName: s.plan.name, provider: s.provider, currentPeriodEnd: s.currentPeriodEnd, createdAt: s.createdAt })),
           grantedServiceIds: user.userServices.map((us) => us.serviceId),
+          grantedPlanIds: user.planAccesses.map((pa) => pa.planId),
           sessions: user.sessions.map((s) => ({ id: s.id, ip: s.ip, userAgent: s.userAgent, lastActiveAt: s.lastActiveAt })),
           loginHistory: user.loginHistory.map((h) => ({ id: h.id, ip: h.ip, success: h.success, reason: h.reason, createdAt: h.createdAt })),
         }}

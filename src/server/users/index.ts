@@ -72,6 +72,7 @@ export async function getUserDetail(id: string) {
       discordAccount: true,
       subscriptions: { include: { plan: true }, orderBy: { createdAt: "desc" } },
       userServices: { include: { service: true } },
+      planAccesses: { select: { planId: true } },
       sessions: { where: { revokedAt: null, expiresAt: { gt: new Date() } }, orderBy: { lastActiveAt: "desc" } },
       loginHistory: { orderBy: { createdAt: "desc" }, take: 10 },
     },

@@ -20,6 +20,7 @@ import {
   grantSubscriptionAction,
   resetPasswordLinkAction,
   revokeUserSessionsAction,
+  setPlanAccessAction,
   setServiceAccessAction,
   setUserStatusAction,
   updateUserAction,
@@ -38,12 +39,13 @@ type Props = {
     discord: { username: string; discordUserId: string; linkedAt: Date } | null;
     subscriptions: { id: string; status: keyof typeof SUBSCRIPTION_STATUS_META; planName: string; provider: string; currentPeriodEnd: Date | null; createdAt: Date }[];
     grantedServiceIds: string[];
+    grantedPlanIds: string[];
     sessions: { id: string; ip: string | null; userAgent: string | null; lastActiveAt: Date }[];
     loginHistory: { id: string; ip: string | null; success: boolean; reason: string | null; createdAt: Date }[];
   };
   roles: { id: string; slug: string; name: string }[];
   services: { id: string; name: string; visibility: "PUBLIC" | "PRIVATE"; requiresSubscription: boolean; icon: string | null }[];
-  plans: { id: string; name: string }[];
+  plans: { id: string; name: string; isActive: boolean; visibility: "PUBLIC" | "PRIVATE" }[];
   isSelf: boolean;
   can: { write: boolean; roles: boolean; suspend: boolean; delete: boolean; services: boolean; subscriptions: boolean; discord: boolean };
 };
@@ -194,13 +196,33 @@ function ServicesCard({ user, services }: { user: Props["user"]; services: Props
 
 function SubscriptionsCard({ user, plans }: { user: Props["user"]; plans: Props["plans"] }) {
   const [state, action] = useActionState(grantSubscriptionAction.bind(null, user.id), initialActionState);
+  const [pending, start] = React.useTransition();
   useActionToast(state);
+  const activePlans = plans.filter((p) => p.isActive);
+  const privatePlans = plans.filter((p) => p.visibility === "PRIVATE");
+  const grantedPlans = new Set(user.grantedPlanIds);
   return (
     <Card>
       <CardHeader>
         <CardTitle>Abonnement</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
+        {privatePlans.length ? (
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-fg-subtle">Accès aux offres privées</p>
+            <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
+              {privatePlans.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{p.name}</p>
+                    <p className="text-xs text-fg-subtle">{p.isActive ? "L'utilisateur peut souscrire cette offre" : "Offre inactive"}</p>
+                  </div>
+                  <Switch checked={grantedPlans.has(p.id)} disabled={pending} onCheckedChange={(v) => start(async () => report(await setPlanAccessAction(user.id, p.id, v)))} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {user.subscriptions.length === 0 ? <p className="text-sm text-fg-subtle">Aucun abonnement.</p> : (
           <ul className="flex flex-col divide-y divide-border">
             {user.subscriptions.map((s) => (
@@ -221,10 +243,10 @@ function SubscriptionsCard({ user, plans }: { user: Props["user"]; plans: Props[
             ))}
           </ul>
         )}
-        {plans.length ? (
+        {activePlans.length ? (
           <form action={action} className="flex flex-col gap-3 rounded-xl border border-border bg-bg-elevated/50 p-4 sm:flex-row sm:items-end">
             <Field label="Attribuer manuellement" htmlFor="planId" className="flex-1">
-              <Select id="planId" name="planId">{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select>
+              <Select id="planId" name="planId">{activePlans.map((p) => <option key={p.id} value={p.id}>{p.name}{p.visibility === "PRIVATE" ? " (privé)" : ""}</option>)}</Select>
             </Field>
             <Field label="Durée (mois)" htmlFor="months" className="sm:w-28">
               <Input id="months" name="months" type="number" min={1} max={36} defaultValue={1} />

@@ -15,7 +15,7 @@ import { deletePlanAction, savePlanAction } from "@/actions/admin";
 import { formatMoney } from "@/lib/meta";
 import { initialActionState } from "@/lib/utils";
 
-type Plan = { id: string; slug: string; name: string; description: string | null; priceCents: number; currency: string; interval: "MONTH" | "YEAR"; paypalPlanId: string | null; isActive: boolean; sortOrder: number; count: number };
+type Plan = { id: string; slug: string; name: string; description: string | null; priceCents: number; currency: string; interval: "MONTH" | "YEAR"; paypalPlanId: string | null; isActive: boolean; visibility: "PUBLIC" | "PRIVATE"; sortOrder: number; count: number };
 
 export function PlansManager({ plans }: { plans: Plan[] }) {
   const [editing, setEditing] = React.useState<Plan | null | "new">(null);
@@ -33,6 +33,7 @@ export function PlansManager({ plans }: { plans: Plan[] }) {
               <p className="flex flex-wrap items-center gap-2 font-medium">
                 {p.name}
                 <Badge variant={p.isActive ? "success" : "muted"}>{p.isActive ? "Actif" : "Inactif"}</Badge>
+                {p.visibility === "PRIVATE" ? <Badge variant="violet">Privé</Badge> : null}
                 {!p.paypalPlanId ? <Badge variant="warning">Sans plan PayPal</Badge> : null}
               </p>
               <p className="text-xs text-fg-subtle">{formatMoney(p.priceCents, p.currency)} / {p.interval === "MONTH" ? "mois" : "an"} · slug {p.slug} · {p.count} abonné{p.count > 1 ? "s" : ""}</p>
@@ -81,10 +82,18 @@ function PlanDialog({ plan, onClose }: { plan: Plan | null; onClose: () => void 
             </Field>
           </div>
           <Field label="ID du plan PayPal" htmlFor="p-paypal" error={fe.paypalPlanId} hint="Créé dans le tableau de bord PayPal (P-XXXX…)"><Input id="p-paypal" name="paypalPlanId" defaultValue={plan?.paypalPlanId ?? ""} /></Field>
-          <div className="flex items-center justify-between rounded-xl border border-border p-3">
-            <p className="text-sm font-medium">Plan actif (proposé aux utilisateurs)</p>
-            <input type="hidden" name="isActive" value={active ? "on" : "off"} />
-            <Switch checked={active} onCheckedChange={setActive} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Visibilité" htmlFor="p-vis" hint="Privé : souscription uniquement pour les utilisateurs autorisés">
+              <Select id="p-vis" name="visibility" defaultValue={plan?.visibility ?? "PUBLIC"}>
+                <option value="PUBLIC">Public</option>
+                <option value="PRIVATE">Privé</option>
+              </Select>
+            </Field>
+            <div className="flex items-center justify-between rounded-xl border border-border p-3">
+              <p className="text-sm font-medium">Plan actif (proposé aux utilisateurs)</p>
+              <input type="hidden" name="isActive" value={active ? "on" : "off"} />
+              <Switch checked={active} onCheckedChange={setActive} />
+            </div>
           </div>
           <Field label="Ordre" htmlFor="p-order"><Input id="p-order" name="sortOrder" type="number" min={0} defaultValue={plan?.sortOrder ?? 0} /></Field>
           <DialogFooter>

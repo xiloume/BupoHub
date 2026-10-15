@@ -99,6 +99,7 @@ export const planSchema = z.object({
   interval: z.enum(["MONTH", "YEAR"]).default("MONTH"),
   paypalPlanId: z.string().trim().max(64).optional().or(z.literal("")),
   isActive: z.boolean().default(true),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC"),
   sortOrder: z.coerce.number().int().min(0).default(0),
 });
 

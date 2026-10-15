@@ -46,6 +46,8 @@ model User {
   userServices        UserService[]       @relation("UserServices")
   grantedServices     UserService[]       @relation("GrantedServices")
   serviceAccounts     ServiceAccount[]
+  planAccesses        PlanAccess[]
+  planAccessGranted   PlanAccess[]        @relation("PlanAccessGrantedBy")
   subscriptions       Subscription[]
   donations           Donation[]
   discordAccount      DiscordAccount?
@@ -278,6 +280,11 @@ enum BillingInterval {
   YEAR
 }
 
+enum PlanVisibility {
+  PUBLIC
+  PRIVATE
+}
+
 model SubscriptionPlan {
   id             String          @id @default(cuid())
   slug           String          @unique
@@ -289,8 +296,10 @@ model SubscriptionPlan {
   paypalPlanId   String?
   features       Json?
   isActive       Boolean         @default(true)
+  visibility     PlanVisibility  @default(PUBLIC)
   sortOrder      Int             @default(0)
   subscriptions  Subscription[]
+  accesses       PlanAccess[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -315,6 +324,20 @@ model Subscription {
   @@index([userId])
   @@index([status])
   @@map("subscriptions")
+}
+
+/** Utilisateurs autorisés à voir et souscrire un plan privé. */
+model PlanAccess {
+  userId      String
+  planId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan        SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  grantedById String?
+  grantedBy   User?            @relation("PlanAccessGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+
+  @@id([userId, planId])
+  @@map("plan_access")
 }
 
 enum DonationStatus {

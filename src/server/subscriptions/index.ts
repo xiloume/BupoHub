@@ -16,6 +16,15 @@ export async function listActivePlans() {
   return db.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" } });
 }
 
+/** Plans visibles par l'utilisateur : publics + plans privés qui lui sont autorisés. */
+export async function listAvailablePlans(userId: string) {
+  const access = await db.planAccess.findMany({ where: { userId }, select: { planId: true } });
+  return db.subscriptionPlan.findMany({
+    where: { isActive: true, OR: [{ visibility: "PUBLIC" }, { id: { in: access.map((a) => a.planId) } }] },
+    orderBy: { sortOrder: "asc" },
+  });
+}
+
 export async function listAllPlans() {
   return db.subscriptionPlan.findMany({
     orderBy: { sortOrder: "asc" },
@@ -45,6 +54,10 @@ export async function startSubscription(user: SessionUser, planId: string) {
 
   const plan = await db.subscriptionPlan.findUniqueOrThrow({ where: { id: planId } });
   if (!plan.isActive) throw new Error("Ce plan n'est plus disponible.");
+  if (plan.visibility === "PRIVATE" && !user.permissions.has("subscriptions.manage")) {
+    const access = await db.planAccess.findUnique({ where: { userId_planId: { userId: user.id, planId } } });
+    if (!access) throw new Error("Cette offre n'est pas disponible pour votre compte.");
+  }
   if (!plan.paypalPlanId) throw new Error("Ce plan n'est pas encore configuré pour le paiement.");
 
   const provider = getPaymentProvider();
@@ -126,6 +139,34 @@ export async function adminGrantSubscription(actor: SessionUser, userId: string,
   await notifyUser(userId, { type: "SUBSCRIPTION", title: "Abonnement activé", body: `Un abonnement de ${months} mois vous a été attribué.`, link: "/abonnement" });
   await syncServiceIntegrations(userId);
   return sub;
+}
+
+/** Autorise (ou non) un utilisateur à souscrire un plan privé. */
+export async function adminSetPlanAccess(actor: SessionUser, userId: string, planId: string, grant: boolean) {
+  const plan = await db.subscriptionPlan.findUniqueOrThrow({ where: { id: planId } });
+  if (grant) {
+    await db.planAccess.upsert({
+      where: { userId_planId: { userId, planId } },
+      create: { userId, planId, grantedById: actor.id },
+      update: { grantedById: actor.id },
+    });
+    await notifyUser(userId, {
+      type: "SUBSCRIPTION",
+      title: `Offre débloquée : ${plan.name}`,
+      body: `Vous pouvez désormais souscrire l'offre ${plan.name} depuis votre espace abonnement.`,
+      link: "/abonnement",
+    });
+  } else {
+    await db.planAccess.deleteMany({ where: { userId, planId } });
+  }
+  await audit({
+    action: grant ? "plan.access_grant" : "plan.access_revoke",
+    actorId: actor.id,
+    actorLabel: actor.username,
+    targetType: "user",
+    targetId: userId,
+    metadata: { planId, plan: plan.name },
+  });
 }
 
 export async function listSubscriptions(params: { status?: SubscriptionStatus | "ALL"; page?: number }) {

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Check, Sparkles } from "lucide-react";
 import { requireUserPage } from "@/server/auth/guards";
 import { getSettings } from "@/server/settings";
-import { getUserSubscription, listActivePlans, syncSubscription } from "@/server/subscriptions";
+import { getUserSubscription, listAvailablePlans, syncSubscription } from "@/server/subscriptions";
 import { features } from "@/lib/env";
 import { PageHeader, Alert } from "@/components/ui/misc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,7 +23,7 @@ export default async function SubscriptionPage({ searchParams }: PageProps<"/abo
     await syncSubscription(sp.sub).catch(() => null);
   }
 
-  const [plans, subscription] = await Promise.all([listActivePlans(), getUserSubscription(user.id)]);
+  const [plans, subscription] = await Promise.all([listAvailablePlans(user.id), getUserSubscription(user.id)]);
   const active = subscription && (subscription.status === "ACTIVE" || subscription.status === "PAST_DUE");
 
   return (
@@ -61,6 +61,7 @@ export default async function SubscriptionPage({ searchParams }: PageProps<"/abo
                 <div className="pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-accent-soft blur-3xl" />
                 <CardHeader>
                   <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent"><Sparkles className="size-3" /> {p.name}</span>
+                  {p.visibility === "PRIVATE" ? <Badge variant="violet" className="ml-2">Offre privée</Badge> : null}
                   <p className="mt-3 text-4xl font-semibold tracking-tight">
                     {formatMoney(p.priceCents, p.currency)} <span className="text-base font-normal text-fg-muted">/ {p.interval === "MONTH" ? "mois" : "an"}</span>
                   </p>

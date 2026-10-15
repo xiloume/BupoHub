@@ -103,6 +103,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "subscription.create": "Abonnement créé",
   "subscription.update": "Abonnement modifié",
   "subscription.cancel": "Abonnement annulé",
+  "plan.access_grant": "Accès à une offre accordé",
+  "plan.access_revoke": "Accès à une offre retiré",
   "donation.record": "Donation enregistrée",
   "discord.link": "Compte Discord lié",
   "discord.unlink": "Compte Discord délié",

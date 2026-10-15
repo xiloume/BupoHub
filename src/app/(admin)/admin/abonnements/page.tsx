@@ -41,7 +41,7 @@ export default async function AdminSubscriptionsPage({ searchParams }: PageProps
         <Stat label="Plans" value={plans.length} hint={`${plans.filter((p) => p.isActive).length} actif${plans.filter((p) => p.isActive).length > 1 ? "s" : ""}`} />
       </div>
 
-      <PlansManager plans={plans.map((p) => ({ id: p.id, slug: p.slug, name: p.name, description: p.description, priceCents: p.priceCents, currency: p.currency, interval: p.interval, paypalPlanId: p.paypalPlanId, isActive: p.isActive, sortOrder: p.sortOrder, count: p._count.subscriptions }))} />
+      <PlansManager plans={plans.map((p) => ({ id: p.id, slug: p.slug, name: p.name, description: p.description, priceCents: p.priceCents, currency: p.currency, interval: p.interval, paypalPlanId: p.paypalPlanId, isActive: p.isActive, visibility: p.visibility, sortOrder: p.sortOrder, count: p._count.subscriptions }))} />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-4">

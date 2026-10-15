@@ -1,5 +1,5 @@
 import { ok, options, withSession } from "@/server/api";
-import { getUserSubscription, listActivePlans, subscriptionsEnabled } from "@/server/subscriptions";
+import { getUserSubscription, listAvailablePlans, subscriptionsEnabled } from "@/server/subscriptions";
 
 export const OPTIONS = options;
 
@@ -7,7 +7,7 @@ export const OPTIONS = options;
 export const GET = withSession(async (req, user) => {
   const enabled = await subscriptionsEnabled();
   if (!enabled) return ok(req, { enabled: false, subscription: null, plans: [] });
-  const [subscription, plans] = await Promise.all([getUserSubscription(user.id), listActivePlans()]);
+  const [subscription, plans] = await Promise.all([getUserSubscription(user.id), listAvailablePlans(user.id)]);
   return ok(req, {
     enabled: true,
     subscription: subscription ? { id: subscription.id, status: subscription.status, plan: subscription.plan.slug, currentPeriodEnd: subscription.currentPeriodEnd } : null,

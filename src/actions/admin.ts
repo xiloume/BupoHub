@@ -17,7 +17,7 @@ import { createInvitation, revokeInvitation } from "@/server/invitations";
 import { audit } from "@/server/audit";
 import { notifyAll, notifyUser } from "@/server/notifications";
 import { updateSettings, settingsSchema } from "@/server/settings";
-import { adminGrantSubscription, cancelSubscription } from "@/server/subscriptions";
+import { adminGrantSubscription, adminSetPlanAccess, cancelSubscription } from "@/server/subscriptions";
 import { createApiKey, revokeApiKey } from "@/server/api-keys";
 import { fetchDiscordUser, linkDiscord, unlinkDiscord } from "@/server/discord";
 import {
@@ -152,6 +152,17 @@ export async function grantSubscriptionAction(userId: string, _p: ActionState, f
     await adminGrantSubscription(actor, userId, planId, months);
     revalidatePath(`/admin/utilisateurs/${userId}`);
     return { ok: true, message: "Abonnement attribué." };
+  } catch (e) {
+    return handle(e);
+  }
+}
+
+export async function setPlanAccessAction(userId: string, planId: string, grant: boolean): Promise<ActionState> {
+  try {
+    const actor = await requirePermission("subscriptions.manage");
+    await adminSetPlanAccess(actor, userId, planId, grant);
+    revalidatePath(`/admin/utilisateurs/${userId}`);
+    return { ok: true, message: grant ? "Accès à l'offre accordé." : "Accès à l'offre retiré." };
   } catch (e) {
     return handle(e);
   }
