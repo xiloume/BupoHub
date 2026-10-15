@@ -43,7 +43,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (!features.jellyfin) return error(req, "not_configured", 303);
       target = await jellyfinConnectUrl(user, service);
     } else {
-      return error(req, "unknown", 303);
+      // BUPO_SSO et intégrations futures : simple redirection vers le service.
+      // Mettez l'URL du service sur le endpoint SSO de l'app pour une connexion automatique.
+      target = service.url;
     }
     await audit({
       action: "service.connect",
@@ -54,7 +56,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       targetLabel: service.name,
     });
     return NextResponse.redirect(target);
-  } catch {
+  } catch (e) {
+    console.error("[service.connect]", e);
     return error(req, "upstream", 303);
   }
 }
