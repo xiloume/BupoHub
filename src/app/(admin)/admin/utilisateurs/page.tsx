@@ -72,8 +72,8 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
       ) : (
         <>
           {/* Table desktop */}
-          <div className="card-surface hidden overflow-hidden rounded-2xl md:block">
-            <table className="w-full text-sm">
+          <div className="card-surface hidden overflow-x-auto rounded-2xl md:block">
+            <table className="w-full min-w-[900px] text-sm">
               <thead className="bg-bg-elevated/60 text-left text-xs uppercase tracking-wider text-fg-subtle">
                 <tr>
                   <th className="px-4 py-3 font-medium">Utilisateur</th>
