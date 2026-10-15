@@ -14,7 +14,8 @@ export default async function ServicesPage() {
   const services = await listServicesForUser(user.id);
   const accessible = services.filter((s) => s.hasAccess);
   const locked = services.filter((s) => !s.hasAccess);
-  const integrated = accessible.filter((s) => s.integration !== "NONE");
+  // Seules les intégrations avec identifiants par utilisateur (Jellyfin) affichent une carte d'accès.
+  const integrated = accessible.filter((s) => s.integration === "JELLYFIN");
   const accounts = new Map(
     await Promise.all(integrated.map(async (s) => [s.id, await getStoredAccount(user.id, s.id)] as const)),
   );
