@@ -12,11 +12,16 @@ export function encryptSecret(plain: string): string {
   return [iv.toString("base64url"), cipher.getAuthTag().toString("base64url"), data.toString("base64url")].join(".");
 }
 
-export function decryptSecret(payload: string): string {
-  const [iv, tag, data] = payload.split(".");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64url"));
-  decipher.setAuthTag(Buffer.from(tag, "base64url"));
-  return Buffer.concat([decipher.update(Buffer.from(data, "base64url")), decipher.final()]).toString("utf8");
+/** Retourne null si le secret n'est pas déchiffrable (ex. SESSION_SECRET changé). */
+export function decryptSecret(payload: string): string | null {
+  try {
+    const [iv, tag, data] = payload.split(".");
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64url"));
+    decipher.setAuthTag(Buffer.from(tag, "base64url"));
+    return Buffer.concat([decipher.update(Buffer.from(data, "base64url")), decipher.final()]).toString("utf8");
+  } catch {
+    return null;
+  }
 }
 
 /** Mot de passe de service lisible (évite les caractères ambigus pour la saisie TV). */

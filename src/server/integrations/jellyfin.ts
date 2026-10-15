@@ -105,23 +105,25 @@ export async function ensureJellyfinAccount(user: { id: string; username: string
     }
   }
 
-  const password = existing ? decryptSecret(existing.secret) : generateServicePassword();
+  let password = existing ? decryptSecret(existing.secret) : generateServicePassword();
   await setDisabled(jfUser, false);
 
   if (!existing) {
-    await setPassword(jfUser.Id, password);
+    await setPassword(jfUser.Id, password!);
     await db.serviceAccount.create({
-      data: { userId: user.id, serviceId, username: jfUser.Name, secret: encryptSecret(password), externalId: jfUser.Id },
+      data: { userId: user.id, serviceId, username: jfUser.Name, secret: encryptSecret(password!), externalId: jfUser.Id },
     });
-  } else if (existing.externalId !== jfUser.Id || existing.username !== jfUser.Name) {
+  } else if (!password || existing.externalId !== jfUser.Id || existing.username !== jfUser.Name) {
+    // Secret illisible (SESSION_SECRET changé) ou compte réassocié : régénère et re-stocke.
+    if (!password) password = generateServicePassword();
     await setPassword(jfUser.Id, password);
     await db.serviceAccount.update({
       where: { userId_serviceId: { userId: user.id, serviceId } },
-      data: { username: jfUser.Name, externalId: jfUser.Id },
+      data: { username: jfUser.Name, externalId: jfUser.Id, secret: encryptSecret(password) },
     });
   }
 
-  return { username: jfUser.Name, externalId: jfUser.Id, password };
+  return { username: jfUser.Name, externalId: jfUser.Id, password: password! };
 }
 
 /** Régénère (ou défini manuellement) le mot de passe Jellyfin de l'utilisateur. */
@@ -139,7 +141,9 @@ export async function rotateJellyfinPassword(user: { id: string }, serviceId: st
 /** Lit les identifiants stockés sans appeler Jellyfin (pour l'affichage). */
 export async function getStoredAccount(userId: string, serviceId: string): Promise<{ username: string; password: string } | null> {
   const account = await db.serviceAccount.findUnique({ where: { userId_serviceId: { userId, serviceId } } });
-  return account ? { username: account.username, password: decryptSecret(account.secret) } : null;
+  if (!account) return null;
+  const password = decryptSecret(account.secret);
+  return password ? { username: account.username, password } : null;
 }
 
 /**
