@@ -46,8 +46,14 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         {...props}
       >
-        {loading ? <Loader2 className="animate-spin" /> : null}
-        {asChild ? children : <>{children}</>}
+        {asChild ? (
+          children
+        ) : (
+          <>
+            {loading ? <Loader2 className="animate-spin" /> : null}
+            {children}
+          </>
+        )}
       </Comp>
     );
   },
