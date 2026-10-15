@@ -124,11 +124,10 @@ export async function ensureJellyfinAccount(user: { id: string; username: string
   return { username: jfUser.Name, externalId: jfUser.Id, password };
 }
 
-/** Régénère le mot de passe Jellyfin de l'utilisateur. */
-export async function rotateJellyfinPassword(user: { id: string }, serviceId: string): Promise<AccountIdentity> {
+/** Régénère (ou défini manuellement) le mot de passe Jellyfin de l'utilisateur. */
+export async function rotateJellyfinPassword(user: { id: string }, serviceId: string, password = generateServicePassword()): Promise<AccountIdentity> {
   const account = await db.serviceAccount.findUniqueOrThrow({ where: { userId_serviceId: { userId: user.id, serviceId } } });
   if (!account.externalId) throw new Error("Compte externe incomplet.");
-  const password = generateServicePassword();
   await setPassword(account.externalId, password);
   await db.serviceAccount.update({
     where: { userId_serviceId: { userId: user.id, serviceId } },

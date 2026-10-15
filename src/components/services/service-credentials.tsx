@@ -4,7 +4,8 @@ import * as React from "react";
 import { Copy, Eye, EyeOff, KeyRound, MonitorSmartphone, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { provisionServiceCredentialAction, regenerateServiceCredentialAction, type ServiceCredential } from "@/actions/services";
+import { Input } from "@/components/ui/input";
+import { provisionServiceCredentialAction, regenerateServiceCredentialAction, setServiceCredentialPasswordAction, type ServiceCredential } from "@/actions/services";
 
 export function ServiceCredentials({
   serviceId,
@@ -17,6 +18,8 @@ export function ServiceCredentials({
 }) {
   const [creds, setCreds] = React.useState(initial);
   const [revealed, setRevealed] = React.useState(false);
+  const [newPassword, setNewPassword] = React.useState("");
+  const [showNew, setShowNew] = React.useState(false);
   const [pending, start] = React.useTransition();
 
   const copy = (value: string, label: string) => {
@@ -39,6 +42,16 @@ export function ServiceCredentials({
       setCreds(r.data!);
       setRevealed(true);
       toast.success(r.message ?? "Mot de passe régénéré");
+    });
+
+  const setCustomPassword = () =>
+    start(async () => {
+      const r = await setServiceCredentialPasswordAction(serviceId, newPassword);
+      if (r.error) { toast.error(r.fieldErrors?.password ?? r.error); return; }
+      setCreds(r.data!);
+      setNewPassword("");
+      setRevealed(true);
+      toast.success(r.message ?? "Mot de passe mis à jour");
     });
 
   return (
@@ -70,14 +83,34 @@ export function ServiceCredentials({
               }
             />
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-fg-subtle">
-              Ces identifiants servent dans les applications Jellyfin (mobile, TV…). Le bouton « Ouvrir » vous connecte automatiquement dans le navigateur.
-            </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex-1">
+              <span className="text-xs text-fg-subtle">Choisir mon mot de passe</span>
+              <div className="mt-1 flex items-center gap-1.5">
+                <Input
+                  type={showNew ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && newPassword && setCustomPassword()}
+                  placeholder="8+ caractères, lettres et chiffres"
+                  autoComplete="new-password"
+                  className="flex-1"
+                />
+                <button type="button" onClick={() => setShowNew((v) => !v)} className="shrink-0 rounded p-1 hover:bg-white/10" aria-label={showNew ? "Masquer" : "Afficher"}>
+                  {showNew ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </button>
+                <Button size="sm" variant="secondary" loading={pending} disabled={!newPassword} onClick={setCustomPassword}>
+                  Enregistrer
+                </Button>
+              </div>
+            </div>
             <Button size="sm" variant="ghost" loading={pending} onClick={regenerate}>
-              <RefreshCw /> Régénérer
+              <RefreshCw /> Régénérer aléatoirement
             </Button>
           </div>
+          <p className="text-xs text-fg-subtle">
+            Ces identifiants servent dans les applications Jellyfin (mobile, TV…). Le bouton « Ouvrir » vous connecte automatiquement dans le navigateur.
+          </p>
         </>
       ) : (
         <p className="text-xs text-fg-subtle">

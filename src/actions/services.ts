@@ -6,6 +6,7 @@ import { userCanAccessService } from "@/server/services";
 import { ensureJellyfinAccount, rotateJellyfinPassword } from "@/server/integrations/jellyfin";
 import { audit } from "@/server/audit";
 import { features } from "@/lib/env";
+import { passwordSchema, flattenErrors } from "@/lib/validation";
 import type { ActionState } from "@/lib/utils";
 
 export type ServiceCredential = { username: string; password: string };
@@ -46,6 +47,22 @@ export async function regenerateServiceCredentialAction(serviceId: string): Prom
     const account = await rotateJellyfinPassword(user, service.id);
     await audit({ action: "service.credential_rotate", actorId: user.id, actorLabel: user.username, targetType: "service", targetId: service.id, targetLabel: service.name });
     return { ok: true, message: "Mot de passe régénéré.", data: { username: account.username, password: account.password } };
+  } catch (e) {
+    return handle(e);
+  }
+}
+
+/** Définit un mot de passe choisi par l'utilisateur pour le service externe. */
+export async function setServiceCredentialPasswordAction(serviceId: string, password: string): Promise<ActionState<ServiceCredential>> {
+  try {
+    const user = await requireUser();
+    const { service, error } = await checkAccess(user.id, serviceId);
+    if (error || !service) return { error };
+    const parsed = passwordSchema.safeParse(password);
+    if (!parsed.success) return { error: "Mot de passe invalide.", fieldErrors: flattenErrors(parsed.error) };
+    const account = await rotateJellyfinPassword(user, service.id, parsed.data);
+    await audit({ action: "service.credential_set", actorId: user.id, actorLabel: user.username, targetType: "service", targetId: service.id, targetLabel: service.name });
+    return { ok: true, message: "Mot de passe mis à jour.", data: { username: account.username, password: account.password } };
   } catch (e) {
     return handle(e);
   }
