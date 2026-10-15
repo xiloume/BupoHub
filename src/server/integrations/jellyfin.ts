@@ -38,9 +38,29 @@ async function findUser(username: string): Promise<JellyfinUser | null> {
   return users.find((u) => u.Name.toLowerCase() === username.toLowerCase()) ?? null;
 }
 
+// Politique appliquée aux comptes créés par BupoHub :
+// - pas de transcodage vidéo (le Pi ne le supporte pas),
+// - téléchargement des médias autorisé (apps Jellyfin).
+const POLICY_DEFAULTS = {
+  EnableVideoPlaybackTranscoding: false,
+  EnableAudioPlaybackTranscoding: false,
+  EnableContentDownloading: true,
+};
+
 async function createUser(username: string): Promise<JellyfinUser> {
   const res = await adminFetch("/Users/New", { method: "POST", body: JSON.stringify({ Name: username }) });
   return (await res.json()) as JellyfinUser;
+}
+
+async function getUser(userId: string): Promise<JellyfinUser> {
+  const res = await adminFetch(`/Users/${userId}`);
+  return (await res.json()) as JellyfinUser;
+}
+
+async function updatePolicy(jfUser: JellyfinUser, patch: Record<string, unknown>) {
+  // POST /Users/{id}/Policy remplace toute la politique : toujours partir de la version complète.
+  const policy = jfUser.Policy ?? (await getUser(jfUser.Id)).Policy ?? {};
+  await adminFetch(`/Users/${jfUser.Id}/Policy`, { method: "POST", body: JSON.stringify({ ...policy, ...patch }) });
 }
 
 async function setPassword(userId: string, password: string) {
@@ -49,10 +69,7 @@ async function setPassword(userId: string, password: string) {
 
 async function setDisabled(jfUser: JellyfinUser, disabled: boolean) {
   if ((jfUser.Policy?.IsDisabled === true) === disabled) return;
-  await adminFetch(`/Users/${jfUser.Id}/Policy`, {
-    method: "POST",
-    body: JSON.stringify({ ...(jfUser.Policy ?? {}), IsDisabled: disabled }),
-  });
+  await updatePolicy(jfUser, { IsDisabled: disabled });
 }
 
 async function authenticate(username: string, password: string, deviceId: string): Promise<JellyfinSession> {
@@ -80,7 +97,13 @@ export async function ensureJellyfinAccount(user: { id: string; username: string
   const existing = await db.serviceAccount.findUnique({ where: { userId_serviceId: { userId: user.id, serviceId } } });
 
   let jfUser = existing?.externalId ? await findUser(existing.username) : null;
-  if (!jfUser) jfUser = (await findUser(existing?.username ?? user.username)) ?? (await createUser(user.username));
+  if (!jfUser) {
+    jfUser = await findUser(existing?.username ?? user.username);
+    if (!jfUser) {
+      jfUser = await createUser(user.username);
+      await updatePolicy(jfUser, POLICY_DEFAULTS);
+    }
+  }
 
   const password = existing ? decryptSecret(existing.secret) : generateServicePassword();
   await setDisabled(jfUser, false);
