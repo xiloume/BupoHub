@@ -16,6 +16,8 @@ const schema = z.object({
 
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET doit faire au moins 32 caractères"),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  // Forcer true/false ; par défaut : true en production (HTTPS requis), false sinon.
+  COOKIE_SECURE: z.preprocess(emptyToUndefined, bool.optional()),
 
   SMTP_HOST: optionalString,
   SMTP_PORT: z.coerce.number().int().default(587),
@@ -55,6 +57,8 @@ function load(): Env {
 }
 
 export const env = load();
+
+export const cookieSecure = env.COOKIE_SECURE ?? env.NODE_ENV === "production";
 
 export const features = {
   get mail() {

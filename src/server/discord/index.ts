@@ -1,6 +1,6 @@
 import "server-only";
 import { db, type DiscordLinkSource } from "@/server/db";
-import { env, features } from "@/lib/env";
+import { env, features, cookieSecure } from "@/lib/env";
 import { audit } from "@/server/audit";
 import { generateToken, hashToken } from "@/lib/tokens";
 import { cookies } from "next/headers";
@@ -23,7 +23,7 @@ export async function beginOAuth() {
   const store = await cookies();
   store.set(OAUTH_STATE_COOKIE, hashToken(state), {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
+    secure: cookieSecure,
     sameSite: "lax",
     path: "/",
     maxAge: 600,

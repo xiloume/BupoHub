@@ -2,7 +2,7 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { db } from "@/server/db";
-import { env } from "@/lib/env";
+import { env, cookieSecure } from "@/lib/env";
 import { generateToken, hmacToken } from "@/lib/tokens";
 
 export const SESSION_COOKIE = "bupohub_session";
@@ -31,7 +31,7 @@ export async function createSession(userId: string) {
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
+    secure: cookieSecure,
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
