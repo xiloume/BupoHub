@@ -39,7 +39,7 @@ export async function listServicesForUser(userId: string): Promise<ServiceWithAc
       if (granted.has(s.id)) return { ...s, hasAccess: true, accessReason: "granted" };
       return { ...s, hasAccess: false, accessReason: "none" };
     })
-    .filter((s) => s.hasAccess || s.visibility === "PUBLIC" || s.requiresSubscription);
+    .filter((s) => s.hasAccess || s.visibility === "PUBLIC");
 }
 
 export async function userCanAccessService(userId: string, serviceId: string) {
